@@ -23,6 +23,11 @@
 # misc
 .DS_Store
 *.pem
+.idea/
+server.log
+*.png
+img*.png
+Screenshot*.png
 
 # debug
 npm-debug.log*

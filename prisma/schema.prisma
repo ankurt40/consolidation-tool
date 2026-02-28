@@ -1,0 +1,189 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Customer {
+  id                Int                 @id @default(autoincrement())
+  email             String              @unique @db.VarChar(255)
+  passwordHash      String              @map("password_hash") @db.VarChar(255)
+  companyName       String              @map("company_name") @db.VarChar(200)
+  tenantId          String              @unique @map("tenant_id") @db.VarChar(50)
+  isActive          Boolean             @default(true) @map("is_active")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+
+  legalEntities              LegalEntityMaster[]
+  trialBalances              TrialBalance[]
+  journalEntries             JournalEntry[]
+  systemConfigurations       SystemConfiguration[]
+  periodConfigurations       PeriodConfiguration[]
+  financialStatementTitles   FinancialStatementTitles[]
+
+  @@map("customers")
+}
+
+model LegalEntityMaster {
+  id                        Int       @id @default(autoincrement())
+  tenantId                  String    @map("tenant_id") @db.VarChar(50)
+  leCode                    String    @map("le_code") @db.VarChar(50)
+  leName                    String    @map("le_name") @db.VarChar(200)
+  parentEntity              String?   @map("parent_entity") @db.VarChar(50)
+  entityType                String    @map("entity_type") @db.VarChar(100)
+  country                   String    @db.VarChar(100)
+  ownershipPercentDirect    Decimal?  @map("ownership_percent_direct") @db.Decimal(5, 2)
+  ownershipPercentIndirect  Decimal?  @map("ownership_percent_indirect") @db.Decimal(5, 2)
+  totalOwnershipPercent     Decimal?  @map("total_ownership_percent") @db.Decimal(5, 2)
+  nciPercent                Decimal?  @map("nci_percent") @db.Decimal(5, 2)
+  votingRightsPercent       Decimal?  @map("voting_rights_percent") @db.Decimal(5, 2)
+  controlIndicator          String?   @map("control_indicator") @db.VarChar(50)
+  consolidationPercent      Decimal?  @map("consolidation_percent") @db.Decimal(5, 2)
+  consolidationMethod       String?   @map("consolidation_method") @db.VarChar(100)
+  consolidationStructure    String?   @map("consolidation_structure") @db.VarChar(100)
+  localCurrency             String    @map("local_currency") @db.VarChar(10)
+  functionalCurrency        String    @map("functional_currency") @db.VarChar(10)
+  intermediateCurrency      String?   @map("intermediate_currency") @db.VarChar(10)
+  entityClassification      String    @map("entity_classification") @db.VarChar(100)
+  fiscalYearEnd             String    @map("fiscal_year_end") @db.VarChar(20)
+  primaryGAAP               String    @map("primary_gaap") @db.VarChar(50)
+  secondaryGAAP             String?   @map("secondary_gaap") @db.VarChar(50)
+  acquisitionDate           DateTime? @map("acquisition_date") @db.Date
+  disposalDate              DateTime? @map("disposal_date") @db.Date
+  entityJurisdiction        String    @map("entity_jurisdiction") @db.VarChar(100)
+  taxId                     String?   @map("tax_id") @db.VarChar(50)
+  legalForm                 String?   @map("legal_form") @db.VarChar(100)
+  createdAt                 DateTime  @default(now()) @map("created_at")
+  updatedAt                 DateTime  @updatedAt @map("updated_at")
+
+  customer                  Customer  @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+
+  @@unique([tenantId, leCode])
+  @@index([tenantId])
+  @@map("legal_entity_master")
+}
+
+model TrialBalance {
+  id                      Int       @id @default(autoincrement())
+  tenantId                String    @map("tenant_id") @db.VarChar(50)
+  legalEntityCode         String    @map("legal_entity_code") @db.VarChar(50)
+  entityType              String    @map("entity_type") @db.VarChar(50)
+  localGlAccount          String    @map("local_gl_account") @db.VarChar(50)
+  localAccountDescription String    @map("local_account_description") @db.VarChar(500)
+  businessUnit            String    @map("business_unit") @db.VarChar(200)
+  debitAmount             Decimal   @map("debit_amount") @db.Decimal(20, 2)
+  creditAmount            Decimal   @map("credit_amount") @db.Decimal(20, 2)
+  netAmount               Decimal   @map("net_amount") @db.Decimal(20, 2)
+  groupCoa                String    @map("group_coa") @db.VarChar(50)
+  groupDescription        String    @map("group_description") @db.VarChar(500)
+  fsliDetailLowestLevel   String    @map("fsli_detail_lowest_level") @db.VarChar(200)
+  fsliGroupCategory       String    @map("fsli_group_category") @db.VarChar(200)
+  fsliClassification      String    @map("fsli_classification") @db.VarChar(200)
+  fsCategory              String    @map("fs_category") @db.VarChar(200)
+  fsliLevel5              String    @map("fsli_level_5") @db.VarChar(200)
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt               DateTime  @updatedAt @map("updated_at")
+
+  customer                Customer  @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("trial_balance")
+}
+
+model SystemConfiguration {
+  id                      Int       @id @default(autoincrement())
+  tenantId                String    @unique @map("tenant_id") @db.VarChar(50)
+  groupReportingCurrency  String    @map("group_reporting_currency") @db.VarChar(20)
+  gaap                    String    @db.VarChar(50)
+  epsCalc                 String    @map("eps_calc") @db.VarChar(50)
+  numberFormat            String    @map("number_format") @db.VarChar(50)
+  decimalPlaces           Int       @default(2) @map("decimal_places")
+  thousandSeparator       String    @default(",") @map("thousand_separator") @db.VarChar(5)
+  decimalSeparator        String    @default(".") @map("decimal_separator") @db.VarChar(5)
+  scale                   String    @db.VarChar(50)
+  scaleShowIn             String?   @map("scale_show_in") @db.VarChar(50)
+  scaleSuffix             String?   @map("scale_suffix") @db.VarChar(10)
+  presentation            String    @db.VarChar(50)
+  negativeNumberFormat    String    @map("negative_number_format") @db.VarChar(50)
+  plugBs                  String    @map("plug_bs") @db.VarChar(100)
+  plugPl                  String    @map("plug_pl") @db.VarChar(100)
+  zeroDisplay             String    @map("zero_display") @db.VarChar(20)
+  language                String    @default("English") @db.VarChar(50)
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt               DateTime  @updatedAt @map("updated_at")
+
+  customer                Customer  @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+
+  @@map("system_configuration")
+}
+
+model PeriodConfiguration {
+  id                      Int       @id @default(autoincrement())
+  tenantId                String    @unique @map("tenant_id") @db.VarChar(50)
+  currentYearDate         DateTime? @map("current_year_date") @db.Date
+  previousYearDate        DateTime? @map("previous_year_date") @db.Date
+  priorPeriodYearDate     DateTime? @map("prior_period_year_date") @db.Date
+  fyStart                 String    @map("fy_start") @db.VarChar(20)
+  numberOfPeriods         Int       @default(12) @map("number_of_periods")
+  comparativePeriodsBs    String    @map("comparative_periods_bs") @db.VarChar(20)
+  fiscalYearType          String    @map("fiscal_year_type") @db.VarChar(50)
+  yearEndRule             String?   @map("year_end_rule") @db.VarChar(100)
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt               DateTime  @updatedAt @map("updated_at")
+
+  customer                Customer  @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+
+  @@map("period_configuration")
+}
+
+model FinancialStatementTitles {
+  id                        Int       @id @default(autoincrement())
+  tenantId                  String    @unique @map("tenant_id") @db.VarChar(50)
+  balanceSheetTitle         String    @map("balance_sheet_title") @db.VarChar(500)
+  profitAndLossTitle        String    @map("profit_and_loss_title") @db.VarChar(500)
+  cashFlowTitle             String    @map("cash_flow_title") @db.VarChar(500)
+  socieTitle                String    @map("socie_title") @db.VarChar(500)
+  notesTitle                String    @map("notes_title") @db.VarChar(500)
+  createdAt                 DateTime  @default(now()) @map("created_at")
+  updatedAt                 DateTime  @updatedAt @map("updated_at")
+
+  customer                  Customer  @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+
+  @@map("financial_statement_titles")
+}
+
+model JournalEntry {
+  id                Int       @id @default(autoincrement())
+  tenantId          String    @map("tenant_id") @db.VarChar(50)
+  journalDate       DateTime  @map("journal_date") @db.Date
+  referenceDate     DateTime? @map("reference_date") @db.Date
+  legalEntityCode   String    @map("legal_entity_code") @db.VarChar(50)
+  coa               String    @db.VarChar(50)
+  coaDescription    String    @map("coa_description") @db.VarChar(500)
+  businessUnit      String    @map("business_unit") @db.VarChar(200)
+  debitAmount       Decimal   @map("debit_amount") @db.Decimal(20, 2)
+  creditAmount      Decimal   @map("credit_amount") @db.Decimal(20, 2)
+  netAmount         Decimal   @map("net_amount") @db.Decimal(20, 2)
+  impact            String    @db.VarChar(100)
+  adjustmentType    String    @map("adjustment_type") @db.VarChar(100)
+  currencyCode      String    @map("currency_code") @db.VarChar(10)
+  description       String?   @db.VarChar(1000)
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  customer          Customer  @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("journal_entries")
+}
+

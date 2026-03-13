@@ -41,6 +41,11 @@ export default function LegalEntitiesPage() {
   const [selectedEntity, setSelectedEntity] = useState<any>(null);
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterEntityType, setFilterEntityType] = useState('');
+  const [filterCountry, setFilterCountry] = useState('');
+  const [filterControl, setFilterControl] = useState('');
+  const [filterConsolMethod, setFilterConsolMethod] = useState('');
 
   useEffect(() => {
     fetchLegalEntities();
@@ -130,6 +135,33 @@ export default function LegalEntitiesPage() {
     return `${value}%`;
   };
 
+  // Compute unique values for filters
+  const entityTypes = [...new Set(legalEntities.map(e => e.entityType).filter(Boolean))];
+  const countries = [...new Set(legalEntities.map(e => e.country).filter(Boolean))];
+  const controlIndicators = [...new Set(legalEntities.map(e => e.controlIndicator).filter(Boolean) as string[])];
+  const consolMethods = [...new Set(legalEntities.map(e => e.consolidationMethod).filter(Boolean) as string[])];
+
+  // Filter logic
+  const filteredEntities = legalEntities.filter(entity => {
+    const q = searchQuery.toLowerCase();
+    const matchesSearch = !q || entity.leCode.toLowerCase().includes(q) || entity.leName.toLowerCase().includes(q) || entity.country.toLowerCase().includes(q);
+    const matchesType = !filterEntityType || entity.entityType === filterEntityType;
+    const matchesCountry = !filterCountry || entity.country === filterCountry;
+    const matchesControl = !filterControl || entity.controlIndicator === filterControl;
+    const matchesConsol = !filterConsolMethod || entity.consolidationMethod === filterConsolMethod;
+    return matchesSearch && matchesType && matchesCountry && matchesControl && matchesConsol;
+  });
+
+  const hasActiveFilters = searchQuery || filterEntityType || filterCountry || filterControl || filterConsolMethod;
+
+  const clearAllFilters = () => {
+    setSearchQuery('');
+    setFilterEntityType('');
+    setFilterCountry('');
+    setFilterControl('');
+    setFilterConsolMethod('');
+  };
+
   return (
     <div>
       {/* Header */}
@@ -149,16 +181,68 @@ export default function LegalEntitiesPage() {
         </button>
       </div>
 
+      {/* Filter Bar */}
+      <div className="mb-4 px-4">
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Search */}
+            <div className="relative flex-1 min-w-[200px]">
+              <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+              </svg>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by code, name, or country..."
+                className="w-full pl-8 pr-3 py-1.5 bg-white border border-gray-200 rounded-md text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              />
+            </div>
+            {/* Entity Type */}
+            <select value={filterEntityType} onChange={(e) => setFilterEntityType(e.target.value)} className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-md text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+              <option value="">All Types</option>
+              {entityTypes.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            {/* Country */}
+            <select value={filterCountry} onChange={(e) => setFilterCountry(e.target.value)} className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-md text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+              <option value="">All Countries</option>
+              {countries.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            {/* Control */}
+            <select value={filterControl} onChange={(e) => setFilterControl(e.target.value)} className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-md text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+              <option value="">All Controls</option>
+              {controlIndicators.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            {/* Consolidation Method */}
+            <select value={filterConsolMethod} onChange={(e) => setFilterConsolMethod(e.target.value)} className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-md text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+              <option value="">All Methods</option>
+              {consolMethods.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+            {/* Clear */}
+            {hasActiveFilters && (
+              <button onClick={clearAllFilters} className="px-2.5 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors flex items-center gap-1">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Error Banner */}
       {error && (
-        <div className="mb-4 bg-red-50 border border-red-200 rounded-md p-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-            </svg>
-            <span className="text-sm text-red-700">{error}</span>
+        <div className="mb-4 px-4">
+          <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              <span className="text-sm text-red-700">{error}</span>
+            </div>
+            <button onClick={fetchLegalEntities} className="text-xs font-medium text-red-600 hover:text-red-800">Retry</button>
           </div>
-          <button onClick={fetchLegalEntities} className="text-xs font-medium text-red-600 hover:text-red-800">Retry</button>
         </div>
       )}
 
@@ -171,7 +255,7 @@ export default function LegalEntitiesPage() {
       )}
 
       {/* Table Card */}
-      {!loading && !error && legalEntities.length > 0 && (
+      {!loading && !error && (
         <div className="bg-white border-y border-gray-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -193,7 +277,34 @@ export default function LegalEntitiesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {legalEntities.map((entity) => (
+                {filteredEntities.length === 0 ? (
+                  <tr>
+                    <td colSpan={13} className="px-4 py-12 text-center">
+                      <div className="w-12 h-12 bg-gray-100 rounded-md flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+                        </svg>
+                      </div>
+                      {legalEntities.length === 0 ? (
+                        <>
+                          <h3 className="text-sm font-medium text-gray-900">No legal entities found</h3>
+                          <p className="mt-1 text-xs text-gray-500">Get started by adding your first legal entity.</p>
+                          <button onClick={handleCreate} className="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-md text-sm font-medium transition-colors inline-flex items-center gap-1.5">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                            Add Legal Entity
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <h3 className="text-sm font-medium text-gray-900">No matching results</h3>
+                          <p className="mt-1 text-xs text-gray-500">Try adjusting your search or filter criteria.</p>
+                          <button onClick={clearAllFilters} className="mt-3 text-xs font-medium text-emerald-600 hover:text-emerald-700">Clear all filters</button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ) : (
+                filteredEntities.map((entity) => (
                   <tr key={entity.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className="text-sm font-medium text-emerald-700">{entity.leCode}</span>
@@ -252,7 +363,7 @@ export default function LegalEntitiesPage() {
                       )}
                     </td>
                   </tr>
-                ))}
+                )))}
               </tbody>
             </table>
           </div>
@@ -260,33 +371,13 @@ export default function LegalEntitiesPage() {
           {/* Footer */}
           <div className="px-4 py-2.5 border-t border-gray-100 bg-gray-50/30">
             <p className="text-xs text-gray-500">
-              {legalEntities.length} row{legalEntities.length !== 1 ? 's' : ''}
+              {filteredEntities.length} of {legalEntities.length} row{legalEntities.length !== 1 ? 's' : ''}
+              {hasActiveFilters && <span className="ml-1 text-emerald-600">(filtered)</span>}
             </p>
           </div>
         </div>
       )}
 
-      {/* Empty State */}
-      {!loading && !error && legalEntities.length === 0 && (
-        <div className="bg-white border-y border-gray-200 p-12 text-center">
-          <div className="w-12 h-12 bg-gray-100 rounded-md flex items-center justify-center mx-auto mb-4">
-            <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
-            </svg>
-          </div>
-          <h3 className="text-sm font-medium text-gray-900">No legal entities found</h3>
-          <p className="mt-1 text-xs text-gray-500">Get started by adding your first legal entity.</p>
-          <button
-            onClick={handleCreate}
-            className="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-md text-sm font-medium transition-colors inline-flex items-center gap-1.5"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Add Legal Entity
-          </button>
-        </div>
-      )}
 
       {/* Form Modal */}
       <LegalEntityForm

@@ -32,6 +32,11 @@ export default function JournalEntriesPage() {
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterLeCode, setFilterLeCode] = useState('');
+  const [filterImpact, setFilterImpact] = useState('');
+  const [filterAdjType, setFilterAdjType] = useState('');
+  const [filterCurrency, setFilterCurrency] = useState('');
 
   useEffect(() => { fetchEntries(); }, []);
 
@@ -94,6 +99,32 @@ export default function JournalEntriesPage() {
     return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
+  // Compute unique values for filters
+  const leCodes = [...new Set(entries.map(e => e.legalEntityCode).filter(Boolean))];
+  const impacts = [...new Set(entries.map(e => e.impact).filter(Boolean))];
+  const adjTypes = [...new Set(entries.map(e => e.adjustmentType).filter(Boolean))];
+  const currencies = [...new Set(entries.map(e => e.currencyCode).filter(Boolean))];
+
+  const filteredEntries = entries.filter(entry => {
+    const q = searchQuery.toLowerCase();
+    const matchesSearch = !q || entry.coa.toLowerCase().includes(q) || entry.coaDescription.toLowerCase().includes(q) || entry.legalEntityCode.toLowerCase().includes(q) || entry.businessUnit.toLowerCase().includes(q) || (entry.description || '').toLowerCase().includes(q);
+    const matchesLe = !filterLeCode || entry.legalEntityCode === filterLeCode;
+    const matchesImpact = !filterImpact || entry.impact === filterImpact;
+    const matchesAdj = !filterAdjType || entry.adjustmentType === filterAdjType;
+    const matchesCcy = !filterCurrency || entry.currencyCode === filterCurrency;
+    return matchesSearch && matchesLe && matchesImpact && matchesAdj && matchesCcy;
+  });
+
+  const hasActiveFilters = searchQuery || filterLeCode || filterImpact || filterAdjType || filterCurrency;
+
+  const clearAllFilters = () => {
+    setSearchQuery('');
+    setFilterLeCode('');
+    setFilterImpact('');
+    setFilterAdjType('');
+    setFilterCurrency('');
+  };
+
   return (
     <div>
       {/* Header */}
@@ -133,6 +164,50 @@ export default function JournalEntriesPage() {
         </div>
       </div>
 
+      {/* Filter Bar */}
+      <div className="mb-4 px-4">
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[200px]">
+              <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+              </svg>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search COA, description, entity, BU..."
+                className="w-full pl-8 pr-3 py-1.5 bg-white border border-gray-200 rounded-md text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              />
+            </div>
+            <select value={filterLeCode} onChange={(e) => setFilterLeCode(e.target.value)} className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-md text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+              <option value="">All Entities</option>
+              {leCodes.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <select value={filterImpact} onChange={(e) => setFilterImpact(e.target.value)} className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-md text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+              <option value="">All Impacts</option>
+              {impacts.map(i => <option key={i} value={i}>{i}</option>)}
+            </select>
+            <select value={filterAdjType} onChange={(e) => setFilterAdjType(e.target.value)} className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-md text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+              <option value="">All Adj Types</option>
+              {adjTypes.map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+            <select value={filterCurrency} onChange={(e) => setFilterCurrency(e.target.value)} className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-md text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+              <option value="">All Currencies</option>
+              {currencies.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            {hasActiveFilters && (
+              <button onClick={clearAllFilters} className="px-2.5 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors flex items-center gap-1">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Error Banner */}
       {error && (
         <div className="mx-4 mb-4 bg-red-50 border border-red-200 rounded-md p-3 flex items-center justify-between">
@@ -159,7 +234,7 @@ export default function JournalEntriesPage() {
       )}
 
       {/* Table */}
-      {!loading && !error && entries.length > 0 && (
+      {!loading && !error && (
         <div className="bg-white border-y border-gray-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -183,7 +258,29 @@ export default function JournalEntriesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {entries.map(entry => (
+                {filteredEntries.length === 0 ? (
+                  <tr>
+                    <td colSpan={15} className="px-4 py-12 text-center">
+                      {entries.length === 0 ? (
+                        <>
+                          <h3 className="text-sm font-medium text-gray-900">No journal entries</h3>
+                          <p className="text-xs text-gray-500 mt-1">Create your first journal entry to get started.</p>
+                          <button onClick={handleCreate} className="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-md text-sm font-medium transition-colors inline-flex items-center gap-1.5">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                            Add New Entry
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <h3 className="text-sm font-medium text-gray-900">No matching results</h3>
+                          <p className="mt-1 text-xs text-gray-500">Try adjusting your search or filter criteria.</p>
+                          <button onClick={clearAllFilters} className="mt-3 text-xs font-medium text-emerald-600 hover:text-emerald-700">Clear all filters</button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ) : (
+                filteredEntries.map(entry => (
                   <tr key={entry.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-4 py-3 text-sm font-mono text-gray-500">{entry.id}</td>
                     <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{formatDate(entry.journalDate)}</td>
@@ -223,29 +320,18 @@ export default function JournalEntriesPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                )))}
               </tbody>
             </table>
           </div>
-        </div>
-      )}
 
-      {/* Empty State */}
-      {!loading && !error && entries.length === 0 && (
-        <div className="bg-white border-y border-gray-200 p-12 text-center">
-          <div className="w-12 h-12 bg-gray-100 rounded-md flex items-center justify-center mx-auto mb-4">
-            <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-            </svg>
+          {/* Footer */}
+          <div className="px-4 py-2.5 border-t border-gray-100 bg-gray-50/30">
+            <p className="text-xs text-gray-500">
+              {filteredEntries.length} of {entries.length} row{entries.length !== 1 ? 's' : ''}
+              {hasActiveFilters && <span className="ml-1 text-emerald-600">(filtered)</span>}
+            </p>
           </div>
-          <h3 className="text-sm font-medium text-gray-900">No journal entries</h3>
-          <p className="text-xs text-gray-500 mt-1">Create your first journal entry to get started.</p>
-          <button onClick={handleCreate} className="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-md text-sm font-medium transition-colors inline-flex items-center gap-1.5">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Add New Entry
-          </button>
         </div>
       )}
 

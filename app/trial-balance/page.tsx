@@ -33,6 +33,11 @@ export default function TrialBalancePage() {
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterLeCode, setFilterLeCode] = useState('');
+  const [filterFsli, setFilterFsli] = useState('');
+  const [filterBusinessUnit, setFilterBusinessUnit] = useState('');
+  const [filterFsCategory, setFilterFsCategory] = useState('');
 
   useEffect(() => {
     fetchTrialBalances();
@@ -138,6 +143,32 @@ export default function TrialBalancePage() {
     }).format(amount);
   };
 
+  // Compute unique values for filters
+  const leCodes = [...new Set(trialBalances.map(t => t.legalEntityCode).filter(Boolean))];
+  const fsliClassifications = [...new Set(trialBalances.map(t => t.fsliClassification).filter(Boolean))];
+  const businessUnits = [...new Set(trialBalances.map(t => t.businessUnit).filter(Boolean))];
+  const fsCategories = [...new Set(trialBalances.map(t => t.fsCategory).filter(Boolean))];
+
+  const filteredBalances = trialBalances.filter(tb => {
+    const q = searchQuery.toLowerCase();
+    const matchesSearch = !q || tb.localGlAccount.toLowerCase().includes(q) || tb.localAccountDescription.toLowerCase().includes(q) || tb.groupCoa.toLowerCase().includes(q) || tb.legalEntityCode.toLowerCase().includes(q);
+    const matchesLe = !filterLeCode || tb.legalEntityCode === filterLeCode;
+    const matchesFsli = !filterFsli || tb.fsliClassification === filterFsli;
+    const matchesBu = !filterBusinessUnit || tb.businessUnit === filterBusinessUnit;
+    const matchesFsCat = !filterFsCategory || tb.fsCategory === filterFsCategory;
+    return matchesSearch && matchesLe && matchesFsli && matchesBu && matchesFsCat;
+  });
+
+  const hasActiveFilters = searchQuery || filterLeCode || filterFsli || filterBusinessUnit || filterFsCategory;
+
+  const clearAllFilters = () => {
+    setSearchQuery('');
+    setFilterLeCode('');
+    setFilterFsli('');
+    setFilterBusinessUnit('');
+    setFilterFsCategory('');
+  };
+
   return (
     <div>
       {/* Header */}
@@ -177,18 +208,62 @@ export default function TrialBalancePage() {
         </div>
       </div>
 
+      {/* Filter Bar */}
+      <div className="mb-4 px-4">
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[200px]">
+              <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+              </svg>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search GL account, description, COA..."
+                className="w-full pl-8 pr-3 py-1.5 bg-white border border-gray-200 rounded-md text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              />
+            </div>
+            <select value={filterLeCode} onChange={(e) => setFilterLeCode(e.target.value)} className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-md text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+              <option value="">All Entities</option>
+              {leCodes.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <select value={filterBusinessUnit} onChange={(e) => setFilterBusinessUnit(e.target.value)} className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-md text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+              <option value="">All Business Units</option>
+              {businessUnits.map(b => <option key={b} value={b}>{b}</option>)}
+            </select>
+            <select value={filterFsli} onChange={(e) => setFilterFsli(e.target.value)} className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-md text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+              <option value="">All FSLI</option>
+              {fsliClassifications.map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
+            <select value={filterFsCategory} onChange={(e) => setFilterFsCategory(e.target.value)} className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-md text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+              <option value="">All FS Categories</option>
+              {fsCategories.map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
+            {hasActiveFilters && (
+              <button onClick={clearAllFilters} className="px-2.5 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors flex items-center gap-1">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Error Banner */}
       {error && (
-        <div className="mb-4 bg-red-50 border border-red-200 rounded-md p-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-            </svg>
-            <span className="text-sm text-red-700">{error}</span>
+        <div className="mb-4 px-4">
+          <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              <span className="text-sm text-red-700">{error}</span>
+            </div>
+            <button onClick={fetchTrialBalances} className="text-xs font-medium text-red-600 hover:text-red-800">Retry</button>
           </div>
-          <button onClick={fetchTrialBalances} className="text-xs font-medium text-red-600 hover:text-red-800">
-            Retry
-          </button>
         </div>
       )}
 
@@ -201,7 +276,7 @@ export default function TrialBalancePage() {
       )}
 
       {/* Table Card */}
-      {!loading && !error && trialBalances.length > 0 && (
+      {!loading && !error && (
         <div className="bg-white border-y border-gray-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -220,7 +295,29 @@ export default function TrialBalancePage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {trialBalances.map((tb) => (
+                {filteredBalances.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="px-4 py-12 text-center">
+                      {trialBalances.length === 0 ? (
+                        <>
+                          <h3 className="text-sm font-medium text-gray-900">No trial balance entries</h3>
+                          <p className="mt-1 text-xs text-gray-500">Get started by creating your first trial balance entry.</p>
+                          <button onClick={handleCreate} className="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-md text-sm font-medium transition-colors inline-flex items-center gap-1.5">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                            Add First Entry
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <h3 className="text-sm font-medium text-gray-900">No matching results</h3>
+                          <p className="mt-1 text-xs text-gray-500">Try adjusting your search or filter criteria.</p>
+                          <button onClick={clearAllFilters} className="mt-3 text-xs font-medium text-emerald-600 hover:text-emerald-700">Clear all filters</button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ) : (
+                filteredBalances.map((tb) => (
                   <tr key={tb.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className="text-sm font-medium text-emerald-700">{tb.legalEntityCode}</span>
@@ -270,7 +367,7 @@ export default function TrialBalancePage() {
                       )}
                     </td>
                   </tr>
-                ))}
+                )))}
               </tbody>
             </table>
           </div>
@@ -278,31 +375,10 @@ export default function TrialBalancePage() {
           {/* Footer */}
           <div className="px-4 py-2.5 border-t border-gray-100 bg-gray-50/30">
             <p className="text-xs text-gray-500">
-              {trialBalances.length} row{trialBalances.length !== 1 ? 's' : ''}
+              {filteredBalances.length} of {trialBalances.length} row{trialBalances.length !== 1 ? 's' : ''}
+              {hasActiveFilters && <span className="ml-1 text-emerald-600">(filtered)</span>}
             </p>
           </div>
-        </div>
-      )}
-
-      {/* Empty State */}
-      {!loading && !error && trialBalances.length === 0 && (
-        <div className="bg-white border-y border-gray-200 p-12 text-center">
-          <div className="w-12 h-12 bg-gray-100 rounded-md flex items-center justify-center mx-auto mb-4">
-            <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-            </svg>
-          </div>
-          <h3 className="text-sm font-medium text-gray-900">No trial balance entries</h3>
-          <p className="mt-1 text-xs text-gray-500">Get started by creating your first trial balance entry.</p>
-          <button
-            onClick={handleCreate}
-            className="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-md text-sm font-medium transition-colors inline-flex items-center gap-1.5"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Add First Entry
-          </button>
         </div>
       )}
 
